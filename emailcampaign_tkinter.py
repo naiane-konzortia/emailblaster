@@ -2,6 +2,16 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import showinfo
 
+'''
+ send_email(
+    sender,
+    email_recipient,
+    email_subject,
+    string=None,
+    html=FORMS,
+    attachment_location=[""],
+):
+'''
 
 class App(tk.Tk):
     def __init__(self):
@@ -10,6 +20,9 @@ class App(tk.Tk):
         # configure the root window
         self.title("My Awesome App")
         self.geometry("300x50")
+
+        # frame layout
+        self.frame = ttk.Frame(self)
 
         # label
         self.label = ttk.Label(self, text="Hello, Tkinter!")
@@ -21,7 +34,7 @@ class App(tk.Tk):
         self.button.pack()
 
     def button_clicked(self):
-        showinfo(title="Information", message="Hello, Tkinter!")
+        showinfo(title="Information", message="Your email has been sent!")
 
 
 if __name__ == "__main__":

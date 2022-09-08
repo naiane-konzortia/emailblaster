@@ -1,3 +1,4 @@
+from enum import auto
 from prefect import flow, task, get_run_logger
 from prefect.deployments import Deployment
 from prefect.orion.schemas.schedules import (
@@ -6,7 +7,6 @@ from prefect.orion.schemas.schedules import (
     RRuleSchedule,
 )
 from datetime import timedelta
-
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -15,12 +15,16 @@ from email import encoders
 import os
 import os.path
 import time
-from pyhunter import PyHunter
+
+# from pyhunter import PyHunter
+
 import datetime as dt
 import multiprocessing
 from multiprocessing import Pool
 import numpy as np
 import tqdm
+
+
 
 from verify_email import verify_email_async, verify_email
 import nest_asyncio
@@ -28,27 +32,30 @@ import asyncio
 
 nest_asyncio.apply()
 
+# import ray
 
-# database
+# ray.init()
+
+
+
+#database
+
 from sqlalchemy import create_engine
 import urllib
-import modin.pandas as pd
+import pandas as pd
 
-params = urllib.parse.quote_plus(
-    r"Driver={ODBC Driver 17 for SQL Server};Server=tcp:paraforge-dev.database.windows.net,1433;Database=business;Uid=PRD_SVC_ACCT@paraforge.net;Pwd=4pps3rv1c34cct!;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;Authentication=ActiveDirectoryPassword"
-)
 
-conn = "mssql+pyodbc:///?odbc_connect={}".format(params)
-engine = create_engine(conn)
 
-NUMBER_OF_CONTACTS = 100
+UMBER_OF_CONTACTS = 100
 SERVICE_ACCOUNT = "autoservices@paraforge.net"  # PARAFORGE OR KONZORITA SERVICE ACCOUNT
 USER_EMAIL = "autoservices@paraforge.net"  # USER EMAIL TO AUTHORIZE SENDING - MUST BE SAME DOMAIN AND HAVE SERVICE ACCOUNT ACCESS
 USER_PW = "S3rv1ceC3nt3rpf"  # USER PASSWORD FOR EMAIL TO AUTHORIZE SENDING EMAILS
 NEW_CONTACTS_ONLY = 1  # will send emails to only new contacts if 1, else will send to all contacts within limit of NUMBER_OF_CONTACTS
 
 
-FORMS = """<html><body>Hey</body></html> """  # embedded html shoould this method be used, otherwise use string
+
+FORMS = """<html><body>Hey</body></html>"""  # embedded html shoould this method be used, otherwise use string
+
 
 
 def send_email(
@@ -56,9 +63,16 @@ def send_email(
     email_recipient,
     email_subject,
     string=None,
-    html=None,
+    html=FORMS,
     attachment_location=[""],
 ):
+
+
+
+#html=FORMS
+
+#scheduler
+
     """sends emails to list of recepients with or w/o attachment, in html/plain text options
 
     Args:
@@ -70,20 +84,26 @@ def send_email(
         attachment_location (list, optional): path(s) to file attachements. Defaults to [''].
 
     Returns:
+
         True:confirmation
+
     """
+
     email_sender = sender
     commaspace = ", "
-
     msg = MIMEMultipart()
     msg["From"] = email_sender
     msg["To"] = commaspace.join(email_recipient)
     msg["Subject"] = email_subject
 
+
+
     body = MIMEMultipart("alternative")
+
     if string is not None:
         string = MIMEText(string, "plain")
         body.attach(string)
+
     if html is not None:
         html = MIMEText(html, "html")
         body.attach(html)
@@ -98,6 +118,7 @@ def send_email(
         encoders.encode_base64(part)
         part.add_header("Content-Disposition", "attachment; filename= %s" % filename)
         msg.attach(part)
+
     try:
         server = smtplib.SMTP("smtp.office365.com", 587)
         server.ehlo()
@@ -114,23 +135,24 @@ def send_email(
     return True
 
 
+
+
 def get_accrediated_contacts():
-    df2 = pd.read_sql(
-        f"""--get user and email format
+    df2 = """
         select distinct a.email , a.name from contacts_accredited_emails a
-    """,
-        engine,
-    )
+    """
     return df2
 
 
 @task(retries=1, retry_delay_seconds=5)
+
 def automate_email():
     # from email_formatter import email_formatter
     # GRAB CONTACTS
-    df2 = get_accrediated_contacts()
+    # df2 = get_accrediated_contacts()
     names = ["Naiane"]  # df2['name']
     emails = ["naiane.negri@investhub.ventures"]  # df2['email']
+
     for name, e in zip(names, emails):
         # y= forms.replace('!insertuniqueuser!',name)
         y = FORMS
@@ -145,6 +167,7 @@ def automate_email():
         )
         time.sleep(5)
 
+
     date = dt.datetime.now()
     contacts["email_sent"] = 1
     contacts["sent_date"] = date
@@ -156,11 +179,11 @@ def automate_email():
     logs = logs.append(contacts)
     logs.to_csv(f"logs.csv", index=False)
 
-
-@flow(name="emailcampaignflow2")
-def emailcampaignflow2(name: str):
-    automate_email()
-    return
+    
+# @flow(name="emailcampaignflow2")
+# def emailcampaignflow2(name: str):
+#     automate_email()
+#     return
 
 
 # deployment = Deployment.build_from_flow(
@@ -170,11 +193,24 @@ def emailcampaignflow2(name: str):
 #    tags=["emailcampaign"],
 #    schedule=IntervalSchedule(interval=timedelta(minutes=1000))
 # )
+
 # deployment.apply()
 
+deployment = Deployment.build_from_flow(
+flow=emailcampaignflow2,
+name="email-deployment",
+version=1,
+tags=["emailcampaign"],
+schedule=CronSchedule(cron=("55 11 2 12 *")
+)
+)
+deployment.apply()
+
 contacts = get_accrediated_contacts()
+
 print(contacts)
 
-# emailcampaignflow("email")
-engine.dispose()
+# emailcampaignflow2("email")
+# engine.dispose()
+
 quit()
