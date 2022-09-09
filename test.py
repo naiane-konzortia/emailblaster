@@ -49,7 +49,6 @@ def create_input_frame(container):
 
 def create_button_frame(container):
     frame = ttk.Frame(container)
-
     frame.columnconfigure(0, weight=1)
 
     ttk.Button(frame, text='Find Next').grid(column=0, row=0)

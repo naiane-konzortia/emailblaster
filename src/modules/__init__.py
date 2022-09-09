@@ -1,0 +1,1 @@
+from .emailcampaign import EmailBlaster
